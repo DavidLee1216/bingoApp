@@ -1,0 +1,181 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BingoCaller.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BingoCallerDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RoundButton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Control\ButtonControl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Control\ControlBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CNumberPanel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CPanelViewDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CSelectColorDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CUserScreen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BingoCaller.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BingoCallerDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RoundButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Control\ButtonControl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Control\ControlBase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CNumberPanel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CPanelViewDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CSelectColorDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CUserScreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="BingoCaller.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\BingoCaller.rc2">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="libmysql.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\BingoCaller.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\bitmap1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\bitmap2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\background.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\start-1.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\start-2.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\start-1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\call-1.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\start-2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\stop-1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\stop-2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\call-1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\call-2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\certified-1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\certified-2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\num_panel.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\recall-1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\recall-2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\blue button.BMP">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\gold button.BMP">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\red button.BMP">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\red button1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\blue button1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\gold button1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\checkButton.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="libmysql.lib" />
+  </ItemGroup>
+</Project>
