@@ -14,7 +14,7 @@
 #define SERVER_PORT 1001
 #define BUFFER_SIZE 4096
 
-// #define TICKET_ONLEY
+ #define TICKET_ONLEY
 
 
 #define IPAddress "127.0.0.1"
@@ -165,6 +165,8 @@ CBingoCallerDlg::CBingoCallerDlg(CWnd* pParent /*=nullptr*/)
 	g_pCallerDlg = this;
 	m_bCanStartNewGameWithNumber = false;
 	m_userScreen = 0;
+	m_nSessionCnt = 0;
+	m_nCurrSessionId = 0;
 }
 
 CBingoCallerDlg::~CBingoCallerDlg()
@@ -195,7 +197,7 @@ int connectDB()
 	char username[100], password[100];
 	if (fp)
 	{
-		fgets(username, 100, fp); trim(username);
+		fgets(username, 100, fp); trim(username); 
 		fgets(password, 100, fp); trim(password);
 		fclose(fp);
 		mysql = mysql_init(0);
@@ -230,6 +232,7 @@ void CBingoCallerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_LOGO_FILE, m_szLogoFilename);
 	DDX_Text(pDX, IDC_EDIT_ADVERTISE_TEXT, m_szAdText);
 	DDX_Text(pDX, IDC_EDIT_AD_FILE, m_szAdFilename);
+	DDX_Control(pDX, IDC_COMBO_SESSION_NAME, m_comboSession);
 }
 
 BEGIN_MESSAGE_MAP(CBingoCallerDlg, CDialogEx)
@@ -249,6 +252,7 @@ BEGIN_MESSAGE_MAP(CBingoCallerDlg, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_RANGE_FROM, &CBingoCallerDlg::OnEnChangeEditRangeFrom)
 	ON_EN_CHANGE(IDC_EDIT_RANGE_TO, &CBingoCallerDlg::OnEnChangeEditRangeTo)
 	ON_BN_CLICKED(IDC_BUTTON_AD_IMAGE_REMOVE, &CBingoCallerDlg::OnBnClickedButtonAdImageRemove)
+	ON_CBN_SELCHANGE(IDC_COMBO_SESSION_NAME, &CBingoCallerDlg::OnCbnSelchangeComboSessionName)
 END_MESSAGE_MAP()
 
 
@@ -339,8 +343,9 @@ BOOL CBingoCallerDlg::OnInitDialog()
 // 		return FALSE;
 // 	}
 	setColorInfo();
+	loadSessionNames();
 // 	getPanelRangeInfo();
-	loadPanelInfo();
+// 	loadPanelInfo();
 	m_nGameNumber = 1;
 // 	AfxBeginThread((AFX_THREADPROC)connectToClient, 0, THREAD_PRIORITY_NORMAL);
 	return TRUE;  // return TRUE  unless you set the focus to a control
@@ -597,6 +602,17 @@ LRESULT CBingoCallerDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (message == WM_START)
 	{
+		if (m_nCurrSessionId == 0) {
+			AfxMessageBox(_T("Select session."));
+			return 0;
+		}
+		if (m_bNumberVerified)
+		{
+			if (MessageBox(_T("Are you going to stop this game?"), _T("Query"), MB_OKCANCEL) == IDOK)
+				SendMessage(WM_STOP);
+			else
+				return 0;
+		}
 		UpdateData(TRUE);
 		m_nFromPanel = m_nPanelRangeFrom;
 		m_nToPanel = m_nPanelRangeTo;
@@ -655,23 +671,30 @@ LRESULT CBingoCallerDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	else if (message == WM_STOP)
 	{
-		m_bStopped = true;
-		if (m_bNumberVerified && g_nRecallCount == 0 && g_nMatchedPanelCnt > 0)
+		if (MessageBox(_T("Are you sure you want to stop this game?"), _T("Question"), MB_YESNO) == IDYES)
 		{
-			moveUnverifiedPanelsToMissedMatch();
-			copyVerifiedInfo(m_nCurrMatchLevel);
-			rearrangeVerifiedArrayInfo();
-			TCHAR str[10000], ss[10000]; str[0] = 0, ss[0] = 0;
-			makeWinnerString(ss);
-			_stprintf_s(str, _T("Game finished! Final winners are \r\n%s"), ss);
-			MessageBox(str, _T("Notification"), MB_OK);
-			m_bCanStartNewGameWithNumber = true;
-			return 0;
+			m_bStopped = true;
+			if (m_bNumberVerified && g_nRecallCount == 0 && g_nMatchedPanelCnt > 0)
+			{
+				moveUnverifiedPanelsToMissedMatch();
+				copyVerifiedInfo(m_nCurrMatchLevel);
+				rearrangeVerifiedArrayInfo();
+				TCHAR str[10000], ss[10000]; str[0] = 0, ss[0] = 0;
+				makeWinnerString(ss);
+				_stprintf_s(str, _T("Game finished! Final winners are \r\n%s"), ss);
+				MessageBox(str, _T("Notification"), MB_OK);
+				m_bCanStartNewGameWithNumber = true;
+				return 0;
+			}
+			resetPanelInfo();
 		}
-		resetPanelInfo();
 	}
 	else if (message == WM_CALL)
 	{
+		if (m_nCurrSessionId == 0) {
+			AfxMessageBox(_T("Select session."));
+			return 0;
+		}
 		CallAction();
 	}
 	else if (message == WM_RECALL)
@@ -897,6 +920,14 @@ char* CStringToChar(CString str, char* charStr)
 	return charStr;
 }
 
+TCHAR* CharToTCHAR(char* charStr, TCHAR* str)
+{
+	int len = strlen(charStr);
+	MultiByteToWideChar(CP_ACP, 0, charStr, len, str, len);
+	str[len] = 0;
+	return str;
+}
+
 int CStringToInt(CString str)
 {
 	char ss[20];
@@ -932,7 +963,10 @@ bool CBingoCallerDlg::verifyLastMatched()
 		{
 			row = mysql_fetch_row(res);
 			writeToWinnerPanelInfo(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11]);
+			TCHAR customer[100];
+			getCustomerName(m_nCurrSessionId, m_nPanelNumber, customer);
 			CPanelViewDlg dlg(this);
+			_tcscpy_s(dlg.m_CustomerName, customer);
 			dlg.m_nPanelId = nNumber;
 			dlg.DoModal();
 			int res = 0;
@@ -1554,6 +1588,18 @@ void CBingoCallerDlg::drawYellowBoxes(CDC* dc)
 	rect2.bottom = m_nNumPanelRect.bottom - NUMBER_PANEL_ITEM_INTERVAL;
 	dc->Rectangle(rect2);
 
+	CWnd* pSessionNameWnd = GetDlgItem(IDC_STATIC_SESSION_NAME);
+	pSessionNameWnd->GetWindowRect(rect2);
+	ScreenToClient(rect2);
+	dc->SelectObject(&br1);
+	dc->Rectangle(rect2);
+	rect2.left += 10;
+	CWnd* pSessionComboWnd = GetDlgItem(IDC_COMBO_SESSION_NAME);
+	pSessionComboWnd->GetWindowRect(rect3);
+	ScreenToClient(rect3);
+	rect2.right = rect3.left - 10;
+	DrawText(dc->m_hDC, _T("Session Name:"), -1, rect2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
 	CWnd* pGameNumberWnd = GetDlgItem(IDC_STATIC_GAME_NUMBER);
 	pGameNumberWnd->GetWindowRect(rect2);
 	ScreenToClient(rect2);
@@ -2122,6 +2168,7 @@ void CBingoCallerDlg::resetUserScreen()
 	m_userScreen->m_bVerified = false;
 	m_userScreen->m_nGameNumber = m_nGameNumber;
 	m_userScreen->InvalidateRect(m_userScreen->m_GameNumberRect);
+	m_userScreen->m_nGameLevel = 1;
 }
 
 
@@ -2163,7 +2210,22 @@ void CBingoCallerDlg::loadPanelInfoForRange()
 	}
 }
 
-
+void CBingoCallerDlg::getCustomerName(int session_id, int panel_id, TCHAR* customerName)
+{
+	char query[200];
+	sprintf_s(query, "select customer_name from soldtickets_new where session_id='%d' and panel_id='%d'", session_id, panel_id);
+	if (mysql_query(mysql, query) == 0) {
+		MYSQL_RES* res = mysql_store_result(mysql);
+		if (res->row_count > 0) {
+			MYSQL_ROW row = mysql_fetch_row(res);
+			CharToTCHAR(row[0], customerName);
+		}
+		else {
+			customerName[0] = 0;
+		}
+		mysql_free_result(res);
+	}
+}
 void CBingoCallerDlg::loadPanelInfoForTicket()
 {
 	COLORREF color = getRGBFromColorString(m_currColorStr);
@@ -2179,7 +2241,8 @@ void CBingoCallerDlg::loadPanelInfoForTicket()
 	sprintf_s(szDateTime, "%04d-%02d-%02d %02d:%02d", time.GetYear(), time.GetMonth(), time.GetDay(), time.GetHour(), time.GetMinute());
 	char szDateDefaultTime[50];
 	sprintf_s(szDateDefaultTime, "%04d-%02d-%02d 00:00", time.GetYear(), time.GetMonth(), time.GetDay());
-	sprintf_s(query, "select panel_id from soldtickets where (date_from<='%s' and date_to>='%s' and color='%s') or (date_from='%s' and date_to='%s' and color='%s')", szDateTime, szDateTime, c_szColor, szDateDefaultTime, szDateDefaultTime, c_szColor);
+	sprintf_s(query, "select panel_id from soldtickets_new where session_id='%d' and color='%s' and sold='1'", m_nCurrSessionId, c_szColor);
+// 	sprintf_s(query, "select panel_id from soldtickets where (date_from<='%s' and date_to>='%s' and color='%s') or (date_from='%s' and date_to='%s' and color='%s')", szDateTime, szDateTime, c_szColor, szDateDefaultTime, szDateDefaultTime, c_szColor);
 	if (mysql_query(mysql, query) == 0)
 	{
 		res = mysql_store_result(mysql);
@@ -2238,4 +2301,45 @@ void CBingoCallerDlg::OnBnClickedButtonAdImageRemove()
 	_tcscpy_s(m_userScreen->m_szAdFile, (LPCTSTR)m_szAdFilename);
 	m_userScreen->InvalidateRect(m_userScreen->m_advertiseRect);
 	UpdateData(FALSE);
+}
+
+
+void CBingoCallerDlg::loadSessionNames()
+{
+	char query[200];
+	m_nSessionCnt = 0;
+	m_nCurrSessionId = 0;
+	CTime time = CTime::GetCurrentTime();
+	char szDateTime[50];
+	sprintf_s(szDateTime, "%04d-%02d-%02d", time.GetYear(), time.GetMonth(), time.GetDay());
+	sprintf_s(query, "select *from game_session_info where date >= '%s'", szDateTime);
+	if (mysql_query(mysql, query) == 0) {
+		MYSQL_RES* res = mysql_store_result(mysql);
+		while (MYSQL_ROW row = mysql_fetch_row(res))
+		{
+			m_npSession_ids[m_nSessionCnt++] = atoi(row[0]);
+			TCHAR temp[100];
+			CharToTCHAR(row[1], temp);
+			m_comboSession.AddString(temp);
+		}
+		if (m_nSessionCnt > 0) {
+			m_comboSession.SetCurSel(0);
+			m_nCurrSessionId = m_npSession_ids[0];
+			loadPanelInfo();
+		}
+		mysql_free_result(res);
+	}
+}
+
+
+void CBingoCallerDlg::OnCbnSelchangeComboSessionName()
+{
+	int idx = m_comboSession.GetCurSel();
+	if (idx == -1)
+	{
+		m_nCurrSessionId = 0;
+		return;
+	}
+	m_nCurrSessionId = m_npSession_ids[idx];
+ 	loadPanelInfo();
 }

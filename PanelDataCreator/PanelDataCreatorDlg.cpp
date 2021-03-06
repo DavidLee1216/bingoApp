@@ -14,6 +14,7 @@
 #define new DEBUG_NEW
 #endif
 
+#define US_BINGO
 
 //#pragma comment(lib,"libmysqld.lib")
 //#pragma comment(lib,"ws2_32.lib")
@@ -21,6 +22,10 @@
 MYSQL *mysql;
 MYSQL_RES *res;
 MYSQL_ROW row;
+
+#ifdef US_BINGO
+int g_nppUSBingoCard[5][5];
+#endif
 
 int g_nColumnNumberCount[9] = { 9, 10, 10, 10, 10, 10, 10, 10, 11 };
 char panel_patterns[3000][60];
@@ -423,6 +428,23 @@ bool recordToDatabase()
 
 }
 
+bool recordToDatabaseForUSBingo()
+{
+	char str[100];
+	char query[300];
+	str[0] = 0;
+	for (int j = 0; j < 5; j++)
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			sprintf_s(str, "%s%02d", str, g_nppUSBingoCard[i][j]);
+		}
+	}
+	sprintf_s(query, "insert into us_bingo_panel (id, numbers) values('%d', '%s')", g_nCardNumber, str);
+	if (mysql_query(mysql, query) != 0)
+		::MessageBox(NULL, _T("Mysql query error"), _T("error"), MB_OK);
+	return true;
+}
 
 int g_nColNumbers[9];
 struct st_combination_array
@@ -778,6 +800,38 @@ void makeBingoTable()
 	}
 }
 
+void generate_US_bingo_index_card_random()
+{
+	int cnt = 0;
+	while (cnt <= 2000000)
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			for (int j = 0; j < 5; j++)
+			{
+				if (i == 2 && j == 2)
+				{
+					g_nppUSBingoCard[i][j] = 0;
+					continue;
+				}
+				int number = 0;
+				do 
+				{
+					number = 15 * i + 1 + rand() % 15;
+					g_nppUSBingoCard[i][j] = number;
+				} while (checkInNumberArr(g_nppUSBingoCard[i], j, number));
+			}
+		}
+		recordToDatabaseForUSBingo();
+		TCHAR ss[30];
+		_stprintf_s(ss, _T("%d"), g_nCardNumber);
+		dlg->m_CardNumber.SetWindowText(ss);
+		g_nCardNumber++;
+
+	}
+	::MessageBox(NULL, _T("Completed"), _T("Success"), MB_OK);
+}
+
 void generate_bingo_index_card_random(int panel_id)
 {
 	// 	int r = rand() % 30;
@@ -1014,9 +1068,14 @@ void generate_bingo_index_card(int panel_id)
 
 UINT random_generate()
 {
+#ifndef US_BINGO
 	g_st_comb_array.k = 5;
 	combination(9, 5, 0, 0);
 	generate_bingo_index_card_random(0);
+#else
+	generate_US_bingo_index_card_random();
+#endif // !US_BINGO
+
 	return 0;
 }
 

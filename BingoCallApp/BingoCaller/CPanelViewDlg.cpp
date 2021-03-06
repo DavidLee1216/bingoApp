@@ -29,6 +29,7 @@ CPanelViewDlg::CPanelViewDlg(CWnd* pParent /*=nullptr*/)
 	m_pPrintDC = 0;
 	m_nPanelId = 0;
 	m_pPD = 0;
+	m_CustomerName[0] = 0;
 }
 
 CPanelViewDlg::~CPanelViewDlg()
@@ -168,6 +169,7 @@ void CPanelViewDlg::OnPaint()
 
 void CPanelViewDlg::OnDraw(CDC* dc)
 {
+	CRect rect;
 	LOGFONT lf, lf1; CFont font, font1;
 	memset(&lf, 0, sizeof(LOGFONT));
 	lf.lfHeight = 40; lf.lfWidth = 0;
@@ -185,6 +187,15 @@ void CPanelViewDlg::OnDraw(CDC* dc)
 	br2.CreateSolidBrush(RGB(0, 50, 255));
 	br3.CreateSolidBrush(RGB(255, 155, 0));
 	br4.CreateSolidBrush(RGB(255, 0, 0));
+
+	dc->SetTextColor(RGB(255, 255, 0));
+	CRect rect_name;
+	rect_name.left = g_nViewNumberPanelMargin + 9 * (VIEW_NUMBER_PANEL_ITEM_WIDTH + VIEW_NUMBER_PANEL_ITEM_INTERVAL) + 30;
+	rect_name.right = rect_name.left + 200;
+	rect_name.top = g_nViewNumberPanelTopMargin + VIEW_NUMBER_PANEL_ITEM_HEIGHT*2;
+	rect_name.bottom = rect_name.top + VIEW_NUMBER_PANEL_ITEM_HEIGHT;
+	DrawText(dc->m_hDC, m_CustomerName, -1, rect_name, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+
 	TCHAR str_num[30];
 	CBrush* oldBrush = dc->SelectObject(&br1);
 	int table_id = m_nPanelId % 6 - 1;

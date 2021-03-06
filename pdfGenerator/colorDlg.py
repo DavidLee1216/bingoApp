@@ -15,7 +15,7 @@ class Ui_Dialog(object):
         Dialog.setObjectName("Dialog")
         Dialog.resize(400, 500)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
-        self.buttonBox.setGeometry(QtCore.QRect(-70, 440, 351, 32))
+        self.buttonBox.setGeometry(QtCore.QRect(-70, 460, 351, 32))
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName("buttonBox")
@@ -269,95 +269,14 @@ class Ui_Dialog(object):
         self.dark_pink.setStyleSheet("background-color: rgb(231, 84, 128); color:white")
         self.dark_pink.setObjectName("dark_pink")
         self.dark_pink.clicked.connect(self.darkpinkClicked)
-        # self.gold = QtWidgets.QRadioButton(Dialog)
-        # self.gold.setGeometry(QtCore.QRect(50, 20, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.gold.setFont(font)
-        # self.gold.setStyleSheet("background-color: gold;")
-        # self.gold.setObjectName("gold")
-        # self.gold.clicked.connect(self.goldClicked)
-
-        # self.purple = QtWidgets.QRadioButton(Dialog)
-        # self.purple.setGeometry(QtCore.QRect(50, 60, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.purple.setFont(font)
-        # self.purple.setStyleSheet("background-color: purple;")
-        # self.purple.setObjectName("purple")
-        # self.purple.clicked.connect(self.purpleClicked)
-
-        # self.blue = QtWidgets.QRadioButton(Dialog)
-        # self.blue.setGeometry(QtCore.QRect(50, 100, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.blue.setFont(font)
-        # self.blue.setStyleSheet("background-color: blue;")
-        # self.blue.setObjectName("blue")
-        # self.blue.clicked.connect(self.blueClicked)
-
-        # self.green = QtWidgets.QRadioButton(Dialog)
-        # self.green.setGeometry(QtCore.QRect(50, 140, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.green.setFont(font)
-        # self.green.setStyleSheet("background-color: green;")
-        # self.green.setObjectName("green")
-        # self.green.clicked.connect(self.greenClicked)
-
-        # self.pink = QtWidgets.QRadioButton(Dialog)
-        # self.pink.setGeometry(QtCore.QRect(50, 180, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.pink.setFont(font)
-        # self.pink.setStyleSheet("background-color: pink;")
-        # self.pink.setObjectName("pink")
-        # self.pink.clicked.connect(self.pinkClicked)
-
-        # self.yellow = QtWidgets.QRadioButton(Dialog)
-        # self.yellow.setGeometry(QtCore.QRect(160, 20, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.yellow.setFont(font)
-        # self.yellow.setStyleSheet("background-color: yellow;")
-        # self.yellow.setObjectName("yellow")
-        # self.yellow.clicked.connect(self.yellowClicked)
-
-        # self.red = QtWidgets.QRadioButton(Dialog)
-        # self.red.setGeometry(QtCore.QRect(160, 60, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.red.setFont(font)
-        # self.red.setStyleSheet("background-color: red;")
-        # self.red.setObjectName("red")
-        # self.red.clicked.connect(self.redClicked)
-
-        # self.lilac = QtWidgets.QRadioButton(Dialog)
-        # self.lilac.setGeometry(QtCore.QRect(160, 100, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.lilac.setFont(font)
-        # self.lilac.setStyleSheet("background-color: rgb(200, 162, 200);")
-        # self.lilac.setObjectName("lilac")
-        # self.lilac.clicked.connect(self.lilacClicked)
-
-        # self.brown = QtWidgets.QRadioButton(Dialog)
-        # self.brown.setGeometry(QtCore.QRect(160, 140, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.brown.setFont(font)
-        # self.brown.setStyleSheet("background-color: brown;")
-        # self.brown.setObjectName("brown")
-        # self.brown.clicked.connect(self.brownClicked)
-
-        # self.orange = QtWidgets.QRadioButton(Dialog)
-        # self.orange.setGeometry(QtCore.QRect(160, 180, 82, 31))
-        # font = QtGui.QFont()
-        # font.setPointSize(10)
-        # self.orange.setFont(font)
-        # self.orange.setStyleSheet("background-color: orange;")
-        # self.orange.setObjectName("orange")
-        # self.orange.clicked.connect(self.orangeClicked)
+        self.no_color = QtWidgets.QRadioButton(Dialog)
+        self.no_color.setGeometry(QtCore.QRect(160, 420, 90, 31))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.no_color.setFont(font)
+        self.no_color.setStyleSheet("background-color: transparent;")
+        self.no_color.setObjectName("no_color")
+        self.no_color.clicked.connect(self.nocolorClicked)
 
         self.retranslateUi(Dialog)
         self.buttonBox.accepted.connect(Dialog.accept)
@@ -397,6 +316,7 @@ class Ui_Dialog(object):
         self.grey.setText(_translate("Dialog", "grey"))
         self.light_grey.setText(_translate("Dialog", "light grey"))
         self.dark_grey.setText(_translate("Dialog", "dark grey"))
+        self.no_color.setText(_translate("Dialog", "no color"))
 
     def redClicked(self):
         self.curr_color = "red"
@@ -517,6 +437,10 @@ class Ui_Dialog(object):
     def darkpinkClicked(self):
         self.curr_color = "rgb(231, 84, 128)"
         self.color_name = "darkpink"
+        
+    def nocolorClicked(self):
+        self.curr_color = "transparent"
+        self.color_name = None
  
 if __name__ == "__main__":
     import sys

@@ -217,7 +217,7 @@ void CUserScreen::drawYellowBoxes(CDC *dc)
 	CBrush* oldBrush = dc->SelectObject(&br1);
 	dc->Rectangle(m_nNumPanelRect);
 	dc->SetBkMode(TRANSPARENT);
-	LOGFONT lf; CFont font, font1, font2, font3;
+	LOGFONT lf; CFont font, font1, font2, font3, font4;
 	memset(&lf, 0, sizeof(LOGFONT));
 	lf.lfHeight = 250; lf.lfWeight = FW_BOLD; lf.lfWidth = 0;
 	_tcscpy_s(lf.lfFaceName, _T("GalanoGrotesque-BlackItalic"));
@@ -229,6 +229,8 @@ void CUserScreen::drawYellowBoxes(CDC *dc)
 	CFont* oldfont = dc->SelectObject(&font1);
 	lf.lfHeight = 40;
 	font3.CreateFontIndirect(&lf);
+	lf.lfHeight = 30;
+	font4.CreateFontIndirect(&lf);
 	dc->Rectangle(m_LastNumberRect);
 	CRect rect1;
 	rect1.left = m_LastNumberRect.left + 20;
@@ -288,11 +290,12 @@ void CUserScreen::drawYellowBoxes(CDC *dc)
 	dc->SetTextColor(RGB(0, 0, 0));
 	rect1.right = m_colorRect.left;
 	DrawText(dc->m_hDC, _T("Ticket Colour:"), -1, rect1, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-	if (_tcscmp(m_szColor, _T("blue")) == 0 || _tcscmp(m_szColor, _T("brown")) == 0 || _tcscmp(m_szColor, _T("purple")) == 0)
+	if (_tcscmp(m_szColor, _T("blue")) == 0 || _tcscmp(m_szColor, _T("brown")) == 0 || _tcscmp(m_szColor, _T("purple")) == 0 || _tcsstr(m_szColor, _T("dark")))
 		dc->SetTextColor(RGB(255, 255, 255));
 	else
 		dc->SetTextColor(RGB(0, 0, 0));
 	_tcscpy_s(str, m_szColor);
+	dc->SelectObject(&font4);
 	DrawText(dc->m_hDC, str, -1, m_colorRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
 
 	rect1.left = m_LogoPanelRect.left + (m_LogoPanelRect.Width() - NUMBER_PANEL_USER_ITEM_INTERVAL)*2 / 3 + NUMBER_PANEL_USER_ITEM_INTERVAL;

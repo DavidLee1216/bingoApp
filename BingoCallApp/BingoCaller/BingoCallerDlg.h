@@ -155,4 +155,11 @@ public:
 	afx_msg void OnEnChangeEditRangeFrom();
 	afx_msg void OnEnChangeEditRangeTo();
 	afx_msg void OnBnClickedButtonAdImageRemove();
+	void loadSessionNames();
+	int m_npSession_ids[1000];
+	int m_nSessionCnt;
+	CComboBox m_comboSession;
+	afx_msg void OnCbnSelchangeComboSessionName();
+	void getCustomerName(int session_id, int panel_id, TCHAR* customerName);
+	int m_nCurrSessionId;
 };

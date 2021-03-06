@@ -26,6 +26,7 @@ public:
 	CDC* m_pPrintDC;
 	LPPRINTDLG m_pPD;
 	int m_nPanelId;
+	TCHAR m_CustomerName[100];
 
 	virtual BOOL OnInitDialog();
 	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);

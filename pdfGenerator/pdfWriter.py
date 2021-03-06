@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from PIL import Image
 from reportlab.pdfbase.pdfmetrics import stringWidth
+import gui
 
 pdf = FPDF('L', 'mm', 'A4')
 
@@ -48,7 +49,9 @@ left_margin = 8
 right_margin = 8
 logo_height = 15
 page_title_height = 8
-panel_interval = 3
+panel_interval = 7
+page_title_interval = 3
+panel_vertical_interval = 3
 panel_number_height = 5
 
 def show_message(title, text, style='MB_OK'):
@@ -184,29 +187,60 @@ def makePdf_using_fpdf(bingo_pages_per_book, bingo_books_to_print, perm_range_fr
 def get_real_y(y):
     return page_height*mm-y
 
-def checkExistenceTicket(mydb, mycursor, panel_id, date_from, date_to, panel_color):
-    query = "select *from soldtickets where panel_id='{}' and ((date_from<='{}' and date_to>='{}') or (date_from<='{}' and date_to>='{}')) and color='{}'".format(panel_id, date_from, date_from, date_to, date_to, panel_color)
+def checkPermRangeExistenceTicket(mydb, mycursor, perm_from, perm_to, session_id):
+    query = "select *from print_info where session_id='{}'".format(session_id)
     mycursor.execute(query)
     myresult = mycursor.fetchall()
-    if len(myresult)>0:
-        return True
+    for result in myresult:
+        perm_range_from = int(result[3])
+        perm_range_to = int(result[4])
+        if perm_to < perm_range_from or perm_from > perm_range_to:
+            continue
+        else:
+            return True
+    return False
+
+def getLastId(mydb, mycursor, tablename):
+    query = "select id from {} order by id desc".format(tablename)
+    mycursor.execute(query)
+    myresult = mycursor.fetchone()
+    if len(myresult)==0:
+        return 0
     else:
-        return False
+        return int(myresult[0])
     
-def addTicketToDatabase(mydb, mycursor, panel_id, date_from, date_to, panel_color):
-    query = "insert into soldtickets (panel_id, date_from, date_to, color) values('{}', '{}', '{}', '{}')".format(panel_id, date_from, date_to, panel_color)
+def addToPrintInfo(mydb, mycursor, perm_from, perm_to, print_kind, session_id):
+    query = "insert into print_info(id, session_id, print_kind, perm_from, perm_to) values(NULL, '{}', '{}', '{}', '{}')".format(session_id, print_kind, perm_from, perm_to)
+    mycursor.execute(query)
+    mydb.commit()
+    return getLastId(mydb, mycursor, 'print_info')
+        
+    
+def addTicketToDatabase(mydb, mycursor, card_id, panel_id, session_id, print_id, panel_color):
+    query = "insert into soldtickets_new (id, card_id, panel_id, session_id, print_id, price, color, customer_name, sold) values(NULL, '{}', '{}', '{}', '{}', '0', '{}', '', '0')".format(card_id, panel_id, session_id, print_id, panel_color)
     mycursor.execute(query)
     mydb.commit()
 
-def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_range_from, perm_range_to, page_title, logo_path, date_from, date_to, panel_colors):
-    mydb = mysql.connector.connect(
-    host="localhost",
-    user=username,
-    password=passwd,
-    database="bingo"
-    )
-
-    mycursor = mydb.cursor()
+def getDateString(mydb, mycursor, session_id):
+    query = "select * from game_session_info where id='{}'".format(session_id)
+    mycursor.execute(query)
+    myresult = mycursor.fetchone()
+    if len(myresult)==0:
+        return ''
+    else:
+        date_from = str(myresult[2]) + " " + str(myresult[4])
+        date_to = str(myresult[2]) + " " + str(myresult[5])
+        return date_from + ' - ' + date_to
+    
+def makePdf(session_id, bingo_pages_per_book, bingo_books_to_print, bingo_double_books_to_print, bingo_single_sheets_to_print, perm_range_from, perm_range_to, page_title, logo_path, panel_colors, single_sheet_color):
+    mydb = gui.mydb
+    print_double = True if bingo_double_books_to_print != 0 else False
+    print_sheet = True if bingo_single_sheets_to_print != 0 else False
+    if print_double==True:
+        bingo_books_to_print = bingo_double_books_to_print*2
+    if print_sheet==True:
+        bingo_books_to_print = bingo_single_sheets_to_print
+    mycursor = mydb.cursor(buffered=True)
     try:
         start_table_id = perm_range_from%6
         if start_table_id==0:
@@ -234,10 +268,25 @@ def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_r
         if panel_color_cnt==0:
             panel_colors.append("gold")
             panel_color_cnt = 1
+        if print_sheet==True:
+            panel_colors.clear()
+            panel_colors.append(single_sheet_color)
+            panel_color_cnt = 1
         ret = show_message('Notification', 'The program will start to print from '+str(start_panel)+' to '+str(end_panel)+'\r\nAre you going to continue?', 'MB_YESNO')
         if ret==0:
             return
         if ret==1:
+            if checkPermRangeExistenceTicket(mydb, mycursor, start_panel, end_panel, session_id):
+                show_message('Warning', 'Some perms are already printed in this session. Please choose another perm range.')
+                return
+            if print_double:
+                print_kind = 1
+            elif print_sheet:
+                print_kind = 2
+            else:
+                print_kind = 0
+            print_id = addToPrintInfo(mydb, mycursor, start_panel, end_panel, print_kind, session_id)
+            date_string = getDateString(mydb, mycursor, session_id)
             logo_width = page_width/3-left_margin-right_margin
             card_idx = 0
             new_canvas = False
@@ -257,11 +306,9 @@ def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_r
                     card_idx = 0
                     curr_color_idx = 0
                     page_number = 0
-                if checkExistenceTicket(mydb, mycursor, perm, date_from, date_to, panel_colors[curr_color_idx]):
-                    continue
                 page_number += 1
                 rgb = colors[panel_colors[curr_color_idx]]
-                mycanvas.setFillColorRGB(rgb[0]/255, rgb[1]/255, rgb[2]/255)
+                mycanvas.setFillColorRGB(1, 1, 1)
                 mycanvas.rect((card_idx%3)*(page_width/3)*mm, 0, page_width*mm/3, page_height*mm, fill=1)
                 mycanvas.setFillColorRGB(1, 1, 1)
                 mycanvas.rect(((card_idx%3)*(page_width/3)+left_margin)*mm, get_real_y((top_margin+logo_height)*mm), logo_width*mm, logo_height*mm, stroke=0, fill=1)
@@ -270,27 +317,32 @@ def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_r
                 mycanvas.rect(((card_idx%3)*(page_width/3)+left_margin)*mm, get_real_y((top_margin+logo_height+panel_interval+page_title_height)*mm), logo_width*mm, page_title_height*mm, stroke=0, fill=1)
                 mycanvas.setFillColorRGB(0, 0, 0)
                 x = ((card_idx%3)*(page_width/3)+left_margin)*mm + logo_width*mm/2
-                mycanvas.drawCentredString(x, get_real_y((top_margin+logo_height+page_title_height+panel_interval-1)*mm), page_title)
+                mycanvas.drawCentredString(x, get_real_y((top_margin+logo_height+page_title_height+page_title_interval-1)*mm), page_title)
 
                 cell_width = (page_width/3-left_margin-panel_number_height-panel_interval-right_margin)/9
                 cell_height = (page_height-top_margin*3-logo_height-page_title_height-panel_interval*7)/18
 
                 query = "select panel_1.panel_id, panel_1.numbers, panel_2.panel_id, panel_2.numbers, panel_3.panel_id, panel_3.numbers, panel_4.panel_id, panel_4.numbers, panel_5.panel_id, panel_5.numbers,\
-                    panel_6.panel_id, panel_6.numbers from panel_1, panel_2, panel_3, panel_4, panel_5, panel_6 where panel_{:d}.panel_id='{:d}' and panel_{:d}.card_id=panel_1.card_id and panel_{:d}.card_id=panel_2.card_id \
+                    panel_6.panel_id, panel_6.numbers, panel_1.card_id from panel_1, panel_2, panel_3, panel_4, panel_5, panel_6 where panel_{:d}.panel_id='{:d}' and panel_{:d}.card_id=panel_1.card_id and panel_{:d}.card_id=panel_2.card_id \
                     and panel_{:d}.card_id=panel_3.card_id and panel_{:d}.card_id=panel_4.card_id and panel_{:d}.card_id=panel_5.card_id and panel_{:d}.card_id=panel_6.card_id".format(nTableId, perm, nTableId,
                     nTableId, nTableId, nTableId, nTableId, nTableId)
                 mycursor.execute(query)
                 myresult = mycursor.fetchall()
-                left = (card_idx%3)*(page_width/3)+left_margin+panel_number_height+panel_interval
+                left = (card_idx%3)*(page_width/3)+left_margin+panel_number_height+panel_vertical_interval
                 top = top_margin+logo_height+panel_interval*2+page_title_height
                 if len(myresult) >= 1:
                     mycanvas.setStrokeColorRGB(0, 0, 0) 
                     for i in range(0, 6):
                         panel_id = myresult[0][i*2]
-                        addTicketToDatabase(mydb, mycursor, panel_id, date_from, date_to, panel_colors[curr_color_idx])
+                        addTicketToDatabase(mydb, mycursor, myresult[0][12], panel_id, session_id, print_id, panel_colors[curr_color_idx])
                         panel_numbers_str = myresult[0][i*2+1]
                         if i > 0:
                             top += (cell_height+panel_interval)
+                        mycanvas.setFillColorRGB(rgb[0]/255, rgb[1]/255, rgb[2]/255)
+                        mycanvas.rect((left+cell_width*9/4)*mm, get_real_y(top*mm), cell_width*9*mm/2, panel_interval*mm, stroke=1, fill=1)
+                        mycanvas.setFont("Helvetica", 14)
+                        mycanvas.setFillColorRGB(1, 1, 1)
+                        mycanvas.drawCentredString((left+cell_width*9/2)*mm, get_real_y((top-1)*mm), panel_colors[curr_color_idx])#panel_interval-
                         for j in range(0, 3):
                             if j > 0:
                                 top += cell_height
@@ -315,15 +367,15 @@ def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_r
                         mycanvas.setFillColorRGB(0, 0, 0)
                         mycanvas.drawCentredString(get_real_y((y-cell_height*3/2)*mm), (-x+1)*mm, panel_id_str)
                         mycanvas.restoreState()
-                    mycanvas.setFont("Helvetica", 16)
+                    mycanvas.setFont("Helvetica", 12)
                     mycanvas.setFillColorRGB(1, 1, 1)
-                    date_string = date_from+" - "+date_to
-                    text_width = stringWidth(date_string, 'Helvetica', 16)
+                    text_width = stringWidth(date_string, 'Helvetica', 12)
                     mycanvas.rect((card_idx%3)*(page_width/3)*mm+(page_width*mm/3-text_width)/2, get_real_y((top+cell_height+panel_interval+page_title_height)*mm), text_width, page_title_height*mm, stroke=0, fill=1)
                     mycanvas.setFillColorRGB(0, 0, 0)
                     x = (card_idx%3)*(page_width/3)*mm+(page_width*mm/3-text_width)/2+text_width/2
-                    mycanvas.drawCentredString(x, get_real_y((top+cell_height+panel_interval+page_title_height-1)*mm), date_string) 
+                    mycanvas.drawCentredString(x, get_real_y((top+cell_height+page_title_interval+page_title_height-1)*mm), date_string) 
                     x = (card_idx%3)*(page_width/3)*mm
+                    mycanvas.setFont("Helvetica", 16)
                     mycanvas.drawString(x, 5, panel_colors[curr_color_idx])
                     x = (card_idx%3)*(page_width/3)*mm+page_width*mm/6
                     mycanvas.drawCentredString(x, 5, str(page_number))
@@ -331,7 +383,9 @@ def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_r
                     if curr_color_idx==panel_color_cnt:
                         curr_color_idx = 0
                 card_idx += 1
-                if bingo_pages_per_book==card_idx:
+                if print_double==True and bingo_pages_per_book==card_idx:
+                    curr_color_idx = 0
+                if (print_double==False and bingo_pages_per_book==card_idx) or (print_double==True and bingo_pages_per_book*2==card_idx):
                     mycanvas.showPage()
                     mycanvas.save()
                     book_id += 1
@@ -343,6 +397,4 @@ def makePdf(username, passwd, bingo_pages_per_book, bingo_books_to_print, perm_r
         show_message('Success', 'Successfully generated')
     except Exception as e:
         show_message('Error', 'You met some exception.')
-    mycursor.close()
-    mydb.close()
     return
