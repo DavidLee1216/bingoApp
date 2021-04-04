@@ -6,6 +6,9 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from PIL import Image
 from reportlab.pdfbase.pdfmetrics import stringWidth
+import io
+from PyPDF2 import PdfFileReader, PdfFileWriter, PdfFileMerger
+from pdfrw import PdfReader, PdfWriter, PageMerge
 import gui
 
 pdf = FPDF('L', 'mm', 'A4')
@@ -42,6 +45,7 @@ colors = {  'red':(255, 0, 0),
             'darkpurple':(128,0,191)
 }
 
+book_kind = ['single', 'double', 'sheet']
 page_width = 297
 page_height = 210
 top_margin = 10
@@ -210,7 +214,7 @@ def getLastId(mydb, mycursor, tablename):
         return int(myresult[0])
     
 def addToPrintInfo(mydb, mycursor, perm_from, perm_to, print_kind, session_id):
-    query = "insert into print_info(id, session_id, print_kind, perm_from, perm_to) values(NULL, '{}', '{}', '{}', '{}')".format(session_id, print_kind, perm_from, perm_to)
+    query = "insert into print_info(id, session_id, print_kind, perm_from, perm_to, sold) values(NULL, '{}', '{}', '{}', '{}', '0')".format(session_id, print_kind, perm_from, perm_to)
     mycursor.execute(query)
     mydb.commit()
     return getLastId(mydb, mycursor, 'print_info')
@@ -232,16 +236,26 @@ def getDateString(mydb, mycursor, session_id):
         date_to = str(myresult[2]) + " " + str(myresult[5])
         return date_from + ' - ' + date_to
     
-def makePdf(session_id, bingo_pages_per_book, bingo_books_to_print, bingo_double_books_to_print, bingo_single_sheets_to_print, perm_range_from, perm_range_to, page_title, logo_path, panel_colors, single_sheet_color):
+def makePdf(session_id, session_name, print_kind, bingo_pages_per_book, bingo_books_to_print, bingo_double_books_to_print, bingo_single_sheets_to_print, perm_range_from, perm_range_to, page_title, logo_path, panel_colors, single_sheet_color):
     mydb = gui.mydb
-    print_double = True if bingo_double_books_to_print != 0 else False
-    print_sheet = True if bingo_single_sheets_to_print != 0 else False
+    print_double = True if print_kind == 1 else False
+    print_sheet = True if print_kind == 2 else False
     if print_double==True:
         bingo_books_to_print = bingo_double_books_to_print*2
     if print_sheet==True:
         bingo_books_to_print = bingo_single_sheets_to_print
+    # if print_double:
+    #     print_kind = 1
+    # elif print_sheet:
+    #     print_kind = 2
+    # else:
+    #     print_kind = 0
+    # print_kind = book_kind
     mycursor = mydb.cursor(buffered=True)
     try:
+        if perm_range_from < 1:
+            show_message("Warning", "Perm from range must be greater than 0")
+            return
         start_table_id = perm_range_from%6
         if start_table_id==0:
             start_table_id = 6
@@ -258,8 +272,9 @@ def makePdf(session_id, bingo_pages_per_book, bingo_books_to_print, bingo_double
                 panel_colors.pop(color_idx)
             else:
                 color_idx += 1
-        filename = "{}-1.pdf".format(page_title)
-        mycanvas = canvas.Canvas('books/{}'.format(filename))
+        print_perm_count = bingo_pages_per_book*6 if print_kind!=1 else bingo_pages_per_book*6*2
+        mycanvas = canvas.Canvas('books/{}-{}-({}-{}).pdf'.format(session_name, book_kind[print_kind], start_panel, print_perm_count+start_panel-1))
+        
         mycanvas.setPageSize(landscape(A4))
         mycanvas.setFont('Helvetica', 16)
         curr_color_idx = 0
@@ -279,13 +294,7 @@ def makePdf(session_id, bingo_pages_per_book, bingo_books_to_print, bingo_double
             if checkPermRangeExistenceTicket(mydb, mycursor, start_panel, end_panel, session_id):
                 show_message('Warning', 'Some perms are already printed in this session. Please choose another perm range.')
                 return
-            if print_double:
-                print_kind = 1
-            elif print_sheet:
-                print_kind = 2
-            else:
-                print_kind = 0
-            print_id = addToPrintInfo(mydb, mycursor, start_panel, end_panel, print_kind, session_id)
+            print_id = addToPrintInfo(mydb, mycursor, start_panel, print_perm_count+start_panel-1, print_kind, session_id)
             date_string = getDateString(mydb, mycursor, session_id)
             logo_width = page_width/3-left_margin-right_margin
             card_idx = 0
@@ -298,8 +307,9 @@ def makePdf(session_id, bingo_pages_per_book, bingo_books_to_print, bingo_double
                 if nTableId != 1:
                     continue
                 if new_canvas:
-                    filename = "{}".format(page_title)
-                    mycanvas = canvas.Canvas('books/{}-{:d}.pdf'.format(filename, book_id))
+                    print_perm_count = bingo_pages_per_book*6 if print_kind!=1 else bingo_pages_per_book*6*2
+                    print_id = addToPrintInfo(mydb, mycursor, perm, print_perm_count+perm-1, print_kind, session_id)
+                    mycanvas = canvas.Canvas('books/{}-{}-({}-{}).pdf'.format(session_name, book_kind[print_kind], perm, print_perm_count+perm-1))
                     mycanvas.setPageSize(landscape(A4))
                     mycanvas.setFont('Helvetica', 16)
                     new_canvas = False
@@ -394,6 +404,118 @@ def makePdf(session_id, bingo_pages_per_book, bingo_books_to_print, bingo_double
                     mycanvas.showPage()
             if new_canvas==False:
                 mycanvas.save()
+        show_message('Success', 'Successfully generated')
+    except Exception as e:
+        show_message('Error', 'You met some exception.')
+    return
+
+
+def makePdfUsingCustomerNameWithPyPDF2(filename, session_id, kind, perm_range_from, perm_range_to, name):
+    try:
+        print_kind = 0
+        if kind=='double':
+            print_kind = 1
+        elif kind=='sheet':
+            print_kind = 2
+        packet = io.BytesIO()
+        mycanvas = canvas.Canvas(packet)
+        mycanvas.setPageSize(landscape(A4))
+        mycanvas.setFont('Helvetica', 16)
+        curr_color_idx = 0
+        ret = 1
+        if ret==1:
+            card_idx = 0
+            new_canvas = False
+            book_id = 1
+            # for perm in range(perm_range_from, perm_range_to+1):
+            #     nTableId = perm % 6
+            #     if nTableId == 0:
+            #         nTableId = 6
+            #     if nTableId != 1:
+            #         continue
+                
+            #     mycanvas = canvas.Canvas(packet)
+            #     mycanvas.setPageSize(landscape(A4))
+            #     mycanvas.setFont('Helvetica', 16)
+            #     new_canvas = False
+            #     card_idx = 0
+            #     page_number = 0
+            #     page_number += 1
+            #     mycanvas.setFont("Helvetica", 16)
+            #     x = (card_idx%3)*(page_width/3)*mm+page_width*mm/4
+            #     mycanvas.drawCentredString(x, 5, name)
+            #     # mycanvas.showPage()
+            #     mycanvas.save()
+            #     book_id += 1
+            mycanvas = canvas.Canvas(packet)
+            mycanvas.setPageSize(landscape(A4))
+            mycanvas.setFont('Helvetica', 16)
+            new_canvas = False
+            card_idx = 0
+            page_number = 0
+            page_number += 1
+            mycanvas.setFont("Helvetica", 16)
+            x = (card_idx%3)*(page_width/3)*mm+page_width*mm/4
+            mycanvas.drawCentredString(x, 5, name)
+            # mycanvas.showPage()
+            mycanvas.save()
+            book_id += 1
+            
+            packet.seek(0)
+            new_pdf = PdfFileReader(packet)
+            existing_pdf = PdfFileReader(open(filename, "rb"))
+            output = PdfFileWriter()
+            page = existing_pdf.getPage(0)
+            page.mergePage(new_pdf.getPage(0))
+            output.addPage(page)
+            outputStream = open(filename, "wb")
+            output.write(outputStream)
+            outputStream.close()
+            
+        show_message('Success', 'Successfully generated')
+    except Exception as e:
+        show_message('Error', 'You met some exception.')
+    return
+
+
+def makePdfUsingCustomerNameWithPdfrw(filename, session_id, kind, sold_from, sold_to, name, perm_range_from, perm_range_to):
+    try:
+        print_kind = 0
+        if kind=='double':
+            print_kind = 1
+        elif kind=='sheet':
+            print_kind = 2
+        packet = io.BytesIO()
+        mycanvas = canvas.Canvas(packet)
+        mycanvas.setPageSize(landscape(A4))
+        mycanvas.setFont('Helvetica', 16)
+        curr_color_idx = 0
+        ret = 1
+        if ret==1:
+            card_idx = 0
+            for perm in range(perm_range_from, perm_range_to+1):
+                nTableId = perm % 6
+                if nTableId != 1:
+                    continue
+                x = (card_idx%3)*(page_width/3)*mm+page_width*mm/4
+                if perm >= sold_from and perm <= sold_to:
+                    mycanvas.drawCentredString(x, 5, name)
+                card_idx += 1
+                if card_idx==3:
+                    mycanvas.showPage()
+                    card_idx = 0
+            mycanvas.showPage()
+            mycanvas.save()
+
+            packet.seek(0)
+            new_pdf = PdfReader(packet)
+            existing_pdf = PdfReader(filename)
+            output = PdfWriter()
+            for i in range(len(existing_pdf.pages)):
+                merger = PageMerge(existing_pdf.pages[i])
+                merger.add(new_pdf.getPage(i)).render()
+            output.write(filename, existing_pdf)
+            
         show_message('Success', 'Successfully generated')
     except Exception as e:
         show_message('Error', 'You met some exception.')
